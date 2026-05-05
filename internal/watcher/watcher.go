@@ -32,12 +32,14 @@ func CreateAllowDirWatcher(allowFile string) (func() [][]byte, error) {
 		}
 		allows := strings.Split(string(content), "\n")
 		var tempAllows [][]byte
+		slog.Info("reading allowed keys")
 		for _, allow := range allows {
 			k, err := base64.StdEncoding.DecodeString(allow)
 			if err != nil || len(k) != 32 {
-				log.Printf("invalid wireguard public key: '%s'\n", allow)
+				slog.Error("invalid wireguard public key", "key", allow)
 				continue
 			}
+			slog.Info("adding allowed public key", "key", allow)
 			tempAllows = append(tempAllows, k)
 		}
 		allowKeys.Store(tempAllows)
@@ -50,19 +52,15 @@ func CreateAllowDirWatcher(allowFile string) (func() [][]byte, error) {
 				if !ok {
 					return
 				}
-				log.Println("event:", event)
-				if event.Has(fsnotify.Write) {
-					if event.Name != allowFile {
-						continue
-					}
-					log.Println("modified file:", event.Name)
-					readAllowKeys(event.Name)
+				slog.Debug("fsnotify event", "event", event)
+				if event.Has(fsnotify.Create) || event.Has(fsnotify.Remove) || event.Has(fsnotify.Rename) || event.Has(fsnotify.Write) {
+					readAllowKeys(allowFile)
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
 				}
-				log.Println("error:", err)
+				slog.Error("fsnotify error", "error", err)
 			}
 		}
 	}()
