@@ -34,7 +34,7 @@ func main() {
 	debug := flag.Bool("debug", false, "enable debug messages")
 	broadcastRate := flag.Uint("broadcast-rate", 0, "broadcast rate limit in packet per second")
 	versionFlag := flag.Bool("version", false, "show version number and quit")
-	allowFile := flag.String("allow-file", "", "file which contains a wireguard public key per line. Must not be specified together with --allow")
+	allowDir := flag.String("allow-dir", "", "directory which contains files with one wireguard public key per file. Must not be specified together with --allow")
 
 	var allows pubKeys
 	flag.Var(&allows, "allow", "allow a wireguard public key. --allow can be used multiple times for allowing multiple public keys")
@@ -52,8 +52,8 @@ func main() {
 	}
 	slog.SetDefault(logger)
 
-	if len(allows) > 0 && allowFile != nil && len(*allowFile) > 0 {
-		log.Fatalf("you must not specify --allow and --allow-file")
+	if len(allows) > 0 && allowDir != nil && len(*allowDir) > 0 {
+		log.Fatalf("you must not specify --allow and --allow-dir")
 	}
 
 	var allowKeys [][]byte
@@ -70,16 +70,16 @@ func main() {
 		return allowKeys
 	}
 
-	if allowFile != nil && len(*allowFile) > 0 {
-		if _, err := os.Stat(*allowFile); err == nil {
-			publicKeysFunc, err = watcher.CreateAllowDirWatcher(*allowFile)
+	if allowDir != nil && len(*allowDir) > 0 {
+		if _, err := os.Stat(*allowDir); err == nil {
+			publicKeysFunc, err = watcher.CreateAllowDirWatcher(*allowDir)
 			if err != nil {
-				log.Fatalf("unable to create a allow-file watcher:%v", err)
+				log.Fatalf("unable to create a allow-dir watcher:%v", err)
 			}
 		} else if errors.Is(err, os.ErrNotExist) {
-			log.Fatalf("given allow-file does not exist:%v", err)
+			log.Fatalf("given allow-dir does not exist:%v", err)
 		} else {
-			log.Fatalf("error reading allow-file:%v", err)
+			log.Fatalf("error reading allow-dir:%v", err)
 		}
 	}
 

@@ -2,43 +2,51 @@ package watcher
 
 import (
 	"encoding/base64"
+	"io/fs"
 	"log/slog"
 	"os"
-	"path"
-	"strings"
 	"sync/atomic"
 
 	"github.com/fsnotify/fsnotify"
 )
 
-func CreateAllowDirWatcher(allowFile string) (func() [][]byte, error) {
+func CreateAllowDirWatcher(allowDir string) (func() [][]byte, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
 	}
 
-	allowDir := path.Dir(allowFile)
-
-	slog.Info("listening for allowed public keys", "allow-file", allowFile)
+	slog.Info("listening for allowed public keys", "allow-dir", allowDir)
 
 	var allowKeys atomic.Value
 
-	readAllowKeys := func(filename string) {
-		content, err := os.ReadFile(filename)
+	readAllowKeys := func(dir string) {
+
+		root, err := os.OpenRoot(dir)
 		if err != nil {
-			slog.Error("unable to read allow file", "error", err)
+			slog.Error("unable to read root directory", "error", err)
 			return
 		}
-		allows := strings.Split(string(content), "\n")
+
+		files, err := fs.Glob(root.FS(), "*")
+		if err != nil {
+			slog.Error("unable to read files in root directory", "error", err)
+			return
+		}
+
 		var tempAllows [][]byte
-		slog.Info("reading allowed keys")
-		for _, allow := range allows {
-			k, err := base64.StdEncoding.DecodeString(allow)
-			if err != nil || len(k) != 32 {
-				slog.Error("invalid wireguard public key", "key", allow)
+		for _, f := range files {
+			content, err := root.ReadFile(f)
+			if err != nil {
+				slog.Error("unable to read allow file", "file", f, "error", err)
 				continue
 			}
-			slog.Info("adding allowed public key", "key", allow)
+			k, err := base64.StdEncoding.DecodeString(string(content))
+			if err != nil || len(k) != 32 {
+				slog.Error("invalid wireguard public key", "file", f, "key", content)
+				continue
+			}
+			slog.Info("adding allowed public key", "file", f, "key", content)
 			tempAllows = append(tempAllows, k)
 		}
 		allowKeys.Store(tempAllows)
@@ -53,7 +61,7 @@ func CreateAllowDirWatcher(allowFile string) (func() [][]byte, error) {
 				}
 				slog.Debug("fsnotify event", "event", event)
 				if event.Has(fsnotify.Create) || event.Has(fsnotify.Remove) || event.Has(fsnotify.Rename) || event.Has(fsnotify.Write) {
-					readAllowKeys(allowFile)
+					readAllowKeys(allowDir)
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
@@ -70,7 +78,7 @@ func CreateAllowDirWatcher(allowFile string) (func() [][]byte, error) {
 		return nil, err
 	}
 
-	readAllowKeys(allowFile)
+	readAllowKeys(allowDir)
 
 	return func() [][]byte {
 		return allowKeys.Load().([][]byte)
