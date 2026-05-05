@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"encoding/base64"
-	"log"
 	"log/slog"
 	"os"
 	"path"
@@ -27,7 +26,7 @@ func CreateAllowDirWatcher(allowFile string) (func() [][]byte, error) {
 	readAllowKeys := func(filename string) {
 		content, err := os.ReadFile(filename)
 		if err != nil {
-			log.Printf("unable to read allow file:%v\n", err)
+			slog.Error("unable to read allow file", "error", err)
 			return
 		}
 		allows := strings.Split(string(content), "\n")

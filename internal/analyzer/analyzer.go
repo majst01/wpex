@@ -3,11 +3,12 @@ package analyzer
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/weiiwang01/wpex/internal/exchange"
 	"log"
 	"log/slog"
 	"net"
 	"time"
+
+	"github.com/weiiwang01/wpex/internal/exchange"
 )
 
 const (
@@ -174,17 +175,17 @@ func (t *WireguardAnalyzer) Analyse(packet []byte, peer net.UDPAddr) ([]net.UDPA
 	}
 }
 
-func MakeWireguardAnalyzer(pubkeysFunc func()[][]byte) WireguardAnalyzer {
+func MakeWireguardAnalyzer(pubkeysFunc func() [][]byte) WireguardAnalyzer {
 	secret, err := token(32)
 	if err != nil {
-		log.Fatal(fmt.Errorf("failed to generate cookie secret: %w", err))
+		log.Fatalf("failed to generate cookie secret: %v", err)
 	}
 	return WireguardAnalyzer{
 		table: exchange.MakeExchangeTable(),
 		checker: macChecker{
 			pubkeysFunc: pubkeysFunc,
-			secret:  [32]byte(secret),
-			start:   time.Now(),
+			secret:      [32]byte(secret),
+			start:       time.Now(),
 		},
 	}
 }

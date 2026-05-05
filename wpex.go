@@ -56,7 +56,6 @@ func main() {
 		log.Fatalf("you must not specify --allow and --allow-file")
 	}
 
-	address := fmt.Sprintf("%s:%d", *bind, *port)
 	var allowKeys [][]byte
 	for _, allow := range allows {
 		k, err := base64.StdEncoding.DecodeString(allow)
@@ -89,7 +88,9 @@ func main() {
 		slog.Debug("broadcast rate limit is set to +Inf")
 		limit = rate.Inf
 	} else {
-		slog.Debug(fmt.Sprintf("broadcast rate limit is set to %d", *broadcastRate))
+		slog.Debug("broadcast rate limit is set to", "rate", *broadcastRate)
 	}
+
+	address := fmt.Sprintf("%s:%d", *bind, *port)
 	relay.Start(address, publicKeysFunc, rate.NewLimiter(limit, int((*broadcastRate)*5)))
 }
