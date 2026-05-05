@@ -36,6 +36,20 @@ func CreateAllowDirWatcher(allowDir string) (func() [][]byte, error) {
 
 		var tempAllows [][]byte
 		for _, f := range files {
+			info, err := root.Stat(f)
+			if err != nil {
+				slog.Error("unable to stat file", "file", f, "error", err)
+				continue
+			}
+
+			if info.IsDir() {
+				continue
+			}
+
+			if info.Size() == 0 {
+				continue
+			}
+
 			content, err := root.ReadFile(f)
 			if err != nil {
 				slog.Error("unable to read allow file", "file", f, "error", err)
