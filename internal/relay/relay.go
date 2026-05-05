@@ -2,14 +2,14 @@ package relay
 
 import (
 	"context"
-	"fmt"
-	"github.com/weiiwang01/wpex/internal/analyzer"
-	"golang.org/x/time/rate"
 	"log"
 	"log/slog"
 	"net"
 	"runtime"
 	"syscall"
+
+	"github.com/weiiwang01/wpex/internal/analyzer"
+	"golang.org/x/time/rate"
 )
 
 type udpPacket struct {
@@ -51,7 +51,7 @@ func (r *Relay) relay(conn *net.UDPConn) {
 }
 
 // Start starts the wireguard packet relay server.
-func Start(address string, publicKeys [][]byte, broadcastLimit *rate.Limiter) {
+func Start(address string, publicKeysFunc func() [][]byte, broadcastLimit *rate.Limiter) {
 	slog.Info("server listening", "addr", address)
 	var lc = net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
@@ -64,13 +64,13 @@ func Start(address string, publicKeys [][]byte, broadcastLimit *rate.Limiter) {
 	}
 	relay := Relay{
 		send:     make(chan udpPacket),
-		analyzer: analyzer.MakeWireguardAnalyzer(publicKeys),
+		analyzer: analyzer.MakeWireguardAnalyzer(publicKeysFunc),
 		limit:    broadcastLimit,
 	}
 	for i := 0; i < runtime.NumCPU(); i++ {
 		l, err := lc.ListenPacket(context.Background(), "udp", address)
 		if err != nil {
-			log.Fatal(fmt.Sprintf("failed to listen on %s: %s", address, err))
+			log.Fatalf("failed to listen on %s: %s", address, err)
 		}
 		conn := l.(*net.UDPConn)
 		go relay.relay(conn)

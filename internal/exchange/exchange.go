@@ -40,10 +40,7 @@ func (p *peerInfo) isExpired() bool {
 }
 
 func (p *peerInfo) isExpiredAt(t time.Time) bool {
-	if p.expiredAt.Before(t) {
-		return true
-	}
-	return false
+	return p.expiredAt.Before(t)
 }
 
 // ExchangeTable is a concurrency-safe table that maintains wireguard peer information.

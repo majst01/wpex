@@ -8,13 +8,13 @@ import (
 )
 
 type macChecker struct {
-	secret  [32]byte
-	start   time.Time
-	pubkeys [][]byte
+	secret      [32]byte
+	start       time.Time
+	pubkeysFunc func() [][]byte
 }
 
 func (c *macChecker) cookie(addr net.UDPAddr) [16]byte {
-	ticks := uint64(time.Now().Sub(c.start) / (time.Duration(120) * time.Minute))
+	ticks := uint64(time.Since(c.start) / (time.Duration(120) * time.Minute))
 	addrBytes, _ := addr.AddrPort().MarshalBinary()
 	return mac32(nil, c.secret, binary.BigEndian.AppendUint64(nil, ticks), addrBytes)
 }
@@ -29,13 +29,16 @@ func (c *macChecker) MatchPubkey(message []byte) []byte {
 	if len(message) < 2*macSize {
 		return nil
 	}
-	if len(c.pubkeys) == 0 {
+
+	pubkeys := c.pubkeysFunc()
+
+	if len(pubkeys) == 0 {
 		return nil
 	}
 	l := len(message)
 	mac1 := message[l-2*macSize : l-macSize]
 	d := message[:l-2*macSize]
-	for _, pubkey := range c.pubkeys {
+	for _, pubkey := range pubkeys {
 		key := hash(nil, []byte("mac1----"), pubkey)
 		m := mac32(nil, key, d)
 		if hmac.Equal(mac1, m[:]) {
@@ -62,5 +65,5 @@ func (c *macChecker) CreateReply(pubkey []byte, addr net.UDPAddr, msg []byte) ([
 }
 
 func (c *macChecker) RequireCheck() bool {
-	return len(c.pubkeys) > 0
+	return len(c.pubkeysFunc()) > 0
 }
