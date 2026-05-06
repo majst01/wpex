@@ -2,23 +2,34 @@ package watcher
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"io/fs"
 	"log/slog"
+	"net"
+	"net/netip"
 	"os"
 	"sync/atomic"
 
 	"github.com/fsnotify/fsnotify"
 )
 
-func CreateAllowDirWatcher(allowDir string) (func() [][]byte, error) {
+type endpoint struct {
+	PublicKey string `json:"publicKey"`
+	ForwardTo string `json:"forwardTo,omitempty"`
+}
+
+func CreateAllowDirWatcher(allowDir string) (func() [][]byte, func() []net.UDPAddr, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	slog.Info("listening for allowed public keys", "allow-dir", allowDir)
 
-	var allowKeys atomic.Value
+	var (
+		allowKeys           atomic.Value
+		additionalAddresses atomic.Value
+	)
 
 	readAllowKeys := func(dir string) {
 
@@ -34,7 +45,11 @@ func CreateAllowDirWatcher(allowDir string) (func() [][]byte, error) {
 			return
 		}
 
-		var tempAllows [][]byte
+		var (
+			tempAllows              [][]byte
+			tempAdditionalAddresses []net.UDPAddr
+		)
+
 		for _, f := range files {
 			info, err := root.Stat(f)
 			if err != nil {
@@ -55,7 +70,24 @@ func CreateAllowDirWatcher(allowDir string) (func() [][]byte, error) {
 				slog.Error("unable to read allow file", "file", f, "error", err)
 				continue
 			}
-			k, err := base64.StdEncoding.DecodeString(string(content))
+
+			var ep endpoint
+			if err := json.Unmarshal(content, &ep); err != nil {
+				slog.Error("unable to unmarshal allow file content", "file", f, "content", string(content), "error", err)
+				continue
+			}
+
+			if len(ep.ForwardTo) > 0 {
+				addr, err := netip.ParseAddrPort(ep.ForwardTo)
+				if err != nil {
+					slog.Error("unable to parse forward-to", "forward-to", ep.ForwardTo, "error", err)
+					continue
+				}
+				slog.Info("adding forward-to address to additional addresses", "forward-to", addr)
+				tempAdditionalAddresses = append(tempAdditionalAddresses, *net.UDPAddrFromAddrPort(addr))
+			}
+
+			k, err := base64.StdEncoding.DecodeString(ep.PublicKey)
 			if err != nil || len(k) != 32 {
 				slog.Error("invalid wireguard public key", "file", f, "key", content)
 				continue
@@ -64,6 +96,7 @@ func CreateAllowDirWatcher(allowDir string) (func() [][]byte, error) {
 			tempAllows = append(tempAllows, k)
 		}
 		allowKeys.Store(tempAllows)
+		additionalAddresses.Store(tempAdditionalAddresses)
 	}
 
 	go func() {
@@ -89,12 +122,14 @@ func CreateAllowDirWatcher(allowDir string) (func() [][]byte, error) {
 	// Add a path.
 	err = watcher.Add(allowDir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	readAllowKeys(allowDir)
 
 	return func() [][]byte {
-		return allowKeys.Load().([][]byte)
-	}, nil
+			return allowKeys.Load().([][]byte)
+		}, func() []net.UDPAddr {
+			return additionalAddresses.Load().([]net.UDPAddr)
+		}, nil
 }

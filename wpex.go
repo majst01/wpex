@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"net"
 	"os"
 	"strings"
 
@@ -70,9 +71,13 @@ func main() {
 		return allowKeys
 	}
 
+	additionalAddressesFn := func() []net.UDPAddr {
+		return nil
+	}
+
 	if allowDir != nil && len(*allowDir) > 0 {
 		if _, err := os.Stat(*allowDir); err == nil {
-			publicKeysFunc, err = watcher.CreateAllowDirWatcher(*allowDir)
+			publicKeysFunc, additionalAddressesFn, err = watcher.CreateAllowDirWatcher(*allowDir)
 			if err != nil {
 				log.Fatalf("unable to create a allow-dir watcher:%v", err)
 			}
@@ -92,5 +97,5 @@ func main() {
 	}
 
 	address := fmt.Sprintf("%s:%d", *bind, *port)
-	relay.Start(address, publicKeysFunc, rate.NewLimiter(limit, int((*broadcastRate)*5)))
+	relay.Start(address, publicKeysFunc, additionalAddressesFn, rate.NewLimiter(limit, int((*broadcastRate)*5)))
 }

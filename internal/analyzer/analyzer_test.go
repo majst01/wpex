@@ -32,13 +32,13 @@ func mapAddrs(as []net.UDPAddr) []string {
 }
 
 func TestWireguardAnalyzer_VerifyMac1(t *testing.T) {
-	analyzer := MakeWireguardAnalyzer(func() [][]byte { return [][]byte{pubkeyA, pubkeyB} })
+	analyzer := MakeWireguardAnalyzer(func() [][]byte { return [][]byte{pubkeyA, pubkeyB} }, func() []net.UDPAddr {return nil})
 	addr1, _ := net.ResolveUDPAddr("udp", "127.0.0.1:51820")
 	_, data := analyzer.Analyse(handshakeInitiationSession1AtoB, *addr1)
 	if data == nil {
 		t.Error("mac1 verification failed")
 	}
-	analyzer = MakeWireguardAnalyzer(func() [][]byte { return [][]byte{fakePubkey} })
+	analyzer = MakeWireguardAnalyzer(func() [][]byte { return [][]byte{fakePubkey} }, func() []net.UDPAddr {return nil})
 	_, data = analyzer.Analyse(handshakeInitiationSession1AtoB, *addr1)
 	if data != nil {
 		t.Errorf("mac1 verification didn't fail")
@@ -46,7 +46,7 @@ func TestWireguardAnalyzer_VerifyMac1(t *testing.T) {
 }
 
 func TestWireguardAnalyzer_Handshake(t *testing.T) {
-	analyzer := MakeWireguardAnalyzer(func() [][]byte { return [][]byte{} })
+	analyzer := MakeWireguardAnalyzer(func() [][]byte { return [][]byte{} }, func() []net.UDPAddr {return nil})
 
 	addrA, _ := net.ResolveUDPAddr("udp", "127.0.0.1:51820")
 	addrB, _ := net.ResolveUDPAddr("udp", "127.0.0.1:51821")
@@ -108,7 +108,7 @@ func TestWireguardAnalyzer_Handshake(t *testing.T) {
 }
 
 func TestWireguardAnalyzer_Roaming(t *testing.T) {
-	analyzer := MakeWireguardAnalyzer(func() [][]byte { return [][]byte{} })
+	analyzer := MakeWireguardAnalyzer(func() [][]byte { return [][]byte{} }, func() []net.UDPAddr {return nil})
 
 	addrA, _ := net.ResolveUDPAddr("udp", "127.0.0.1:51820")
 	addrB, _ := net.ResolveUDPAddr("udp", "127.0.0.1:51821")

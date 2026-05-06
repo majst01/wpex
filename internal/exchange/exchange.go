@@ -45,9 +45,10 @@ func (p *peerInfo) isExpiredAt(t time.Time) bool {
 
 // ExchangeTable is a concurrency-safe table that maintains wireguard peer information.
 type ExchangeTable struct {
-	mu        sync.RWMutex
-	endpoints map[string]*endpointInfo
-	peers     map[uint32]peerInfo
+	mu                    sync.RWMutex
+	endpoints             map[string]*endpointInfo
+	peers                 map[uint32]peerInfo
+	additionalAddressesFn func() []net.UDPAddr
 }
 
 func (t *ExchangeTable) refEndpoint(addr net.UDPAddr) *endpointInfo {
@@ -147,6 +148,11 @@ func (t *ExchangeTable) ListAddrs(exclude net.UDPAddr) []net.UDPAddr {
 			addrs = append(addrs, endpoint.addr)
 		}
 	}
+	for _, a := range t.additionalAddressesFn() {
+		if ep, ok := t.endpoints[a.String()]; !ok || ep.isExpired() {
+			addrs = append(addrs, a)
+		}
+	}
 	return addrs
 }
 
@@ -214,9 +220,10 @@ func (t *ExchangeTable) Contains(addr net.UDPAddr) bool {
 	return true
 }
 
-func MakeExchangeTable() ExchangeTable {
+func MakeExchangeTable(additionalAddressesFn func() []net.UDPAddr) ExchangeTable {
 	return ExchangeTable{
-		endpoints: make(map[string]*endpointInfo),
-		peers:     make(map[uint32]peerInfo),
+		endpoints:             make(map[string]*endpointInfo),
+		peers:                 make(map[uint32]peerInfo),
+		additionalAddressesFn: additionalAddressesFn,
 	}
 }

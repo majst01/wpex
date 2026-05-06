@@ -51,7 +51,7 @@ func (r *Relay) relay(conn *net.UDPConn) {
 }
 
 // Start starts the wireguard packet relay server.
-func Start(address string, publicKeysFunc func() [][]byte, broadcastLimit *rate.Limiter) {
+func Start(address string, publicKeysFunc func() [][]byte, additionalAddressesFn func() []net.UDPAddr, broadcastLimit *rate.Limiter) {
 	slog.Info("server listening", "addr", address)
 	var lc = net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
@@ -64,7 +64,7 @@ func Start(address string, publicKeysFunc func() [][]byte, broadcastLimit *rate.
 	}
 	relay := Relay{
 		send:     make(chan udpPacket),
-		analyzer: analyzer.MakeWireguardAnalyzer(publicKeysFunc),
+		analyzer: analyzer.MakeWireguardAnalyzer(publicKeysFunc, additionalAddressesFn),
 		limit:    broadcastLimit,
 	}
 	for i := 0; i < runtime.NumCPU(); i++ {

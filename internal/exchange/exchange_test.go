@@ -8,7 +8,7 @@ import (
 )
 
 func TestExchangeTable_AddPeerAddr(t *testing.T) {
-	table := MakeExchangeTable()
+	table := MakeExchangeTable(func() []net.UDPAddr {return nil})
 	index := uint32(1)
 	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:51820")
 	now := time.Now()
@@ -31,7 +31,7 @@ func TestExchangeTable_AddPeerAddr(t *testing.T) {
 }
 
 func TestExchangeTable_GetPeerAddr(t *testing.T) {
-	table := MakeExchangeTable()
+	table := MakeExchangeTable(func() []net.UDPAddr {return nil})
 	index := uint32(1)
 	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:51820")
 	if err := table.AddPeerAddr(index, *addr); err != nil {
@@ -51,7 +51,7 @@ func TestExchangeTable_GetPeerAddr(t *testing.T) {
 }
 
 func TestExchangeTable_GetPeerCounterpart(t *testing.T) {
-	table := MakeExchangeTable()
+	table := MakeExchangeTable(func() []net.UDPAddr {return nil})
 	index1 := uint32(1)
 	addr1, _ := net.ResolveUDPAddr("udp", "127.0.0.1:51820")
 	index2 := uint32(2)
@@ -87,7 +87,7 @@ func TestExchangeTable_GetPeerCounterpart(t *testing.T) {
 }
 
 func TestExchangeTable_LinkPeers(t *testing.T) {
-	table := MakeExchangeTable()
+	table := MakeExchangeTable(func() []net.UDPAddr {return nil})
 	index1 := uint32(1)
 	addr1, _ := net.ResolveUDPAddr("udp", "127.0.0.1:51820")
 	index2 := uint32(2)
@@ -115,7 +115,7 @@ func TestExchangeTable_LinkPeers(t *testing.T) {
 }
 
 func TestExchangeTable_ListAddrs(t *testing.T) {
-	table := MakeExchangeTable()
+	table := MakeExchangeTable(func() []net.UDPAddr {return nil})
 	addr1, _ := net.ResolveUDPAddr("udp", "127.0.0.1:51820")
 	addr2, _ := net.ResolveUDPAddr("udp", "127.0.0.1:51821")
 
@@ -156,7 +156,7 @@ func TestExchangeTable_ListAddrs(t *testing.T) {
 }
 
 func TestExchangeTable_UpdatePeerAddr(t *testing.T) {
-	table := MakeExchangeTable()
+	table := MakeExchangeTable(func() []net.UDPAddr {return nil})
 	index1 := uint32(1)
 	addr1, _ := net.ResolveUDPAddr("udp", "127.0.0.1:51820")
 	addr12, _ := net.ResolveUDPAddr("udp", "127.0.0.2:51820")

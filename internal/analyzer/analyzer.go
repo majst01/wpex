@@ -175,13 +175,13 @@ func (t *WireguardAnalyzer) Analyse(packet []byte, peer net.UDPAddr) ([]net.UDPA
 	}
 }
 
-func MakeWireguardAnalyzer(pubkeysFunc func() [][]byte) WireguardAnalyzer {
+func MakeWireguardAnalyzer(pubkeysFunc func() [][]byte, additionalAddressesFn func() []net.UDPAddr) WireguardAnalyzer {
 	secret, err := token(32)
 	if err != nil {
 		log.Fatalf("failed to generate cookie secret: %v", err)
 	}
 	return WireguardAnalyzer{
-		table: exchange.MakeExchangeTable(),
+		table: exchange.MakeExchangeTable(additionalAddressesFn),
 		checker: macChecker{
 			pubkeysFunc: pubkeysFunc,
 			secret:      [32]byte(secret),
